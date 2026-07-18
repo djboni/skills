@@ -11,7 +11,6 @@ Orchestrate the full lifecycle of a feature: understand → spec → requirement
 ```
 .scratch/<title>/
 ├── issues/           ← tickets (one per file, numbered 01-)
-├── handoff.md        ← context preservation
 └── MR.md             ← merge request summary
 
 docs/spec/NNNN-<title>.md   ← structured spec (sequential number)
@@ -62,18 +61,7 @@ Quiz the user on the breakdown:
 
 Iterate until approved.
 
-### A.5 — Handoff
-
-Write `.scratch/<title>/handoff.md` capturing:
-- What was decided and why (link to ADRs)
-- Spec path: `docs/spec/NNNN-<title>.md`
-- Requirements paths: `docs/req/<domain>.md`
-- Ticket list with statuses (all `pending`)
-- Current phase and next step
-
-This file is for YOU. After compaction, read it back to restore context.
-
-### A.6 — User review gate
+### A.5 — User review gate
 
 Present the plan to the user:
 - Spec summary
@@ -84,7 +72,7 @@ Present the plan to the user:
 
 If the user requests rework, go back to A.1 with the feedback.
 
-### A.7 — Commit the plan
+### A.6 — Commit the plan
 
 After user approval, commit all planning artifacts:
 
@@ -98,13 +86,11 @@ git commit -m "docs(<title>): planning — spec, requirements, and tickets"
 
 Work the **frontier**: tickets whose blockers are all done. For a linear chain, that is top to bottom.
 
-### B.1 — Restore context
+### B.1 — Implement
 
-Read `.scratch/<title>/handoff.md` to restore context after compaction.
+To reduce the token context usage, the master delegates the implementation.
 
-### B.2 — Implement
-
-Spawn a fresh `general` sub-agent. Note its `task_id` for potential rework resume.
+**MUST spawn a fresh `general` sub-agent.** Record its `task_id` — required for rework resume and completion verification.
 
 The sub-agent prompt:
 
@@ -125,11 +111,13 @@ The sub-agent prompt:
 >
 > Return a summary of what was implemented and which files were modified.
 
-Completion: sub-agent returns with code written and tests passing.
+Completion: sub-agent `task_id` recorded AND sub-agent returns with code written and tests passing. If no `task_id` was recorded, the step is not done.
 
-### B.3 — Review
+### B.2 — Review
 
-Spawn a `general` sub-agent. Note its `task_id` for potential rework resume.
+To reduce the token context usage, the master delegates the review.
+
+**MUST spawn a fresh `general` sub-agent.** Record its `task_id` — required for rework resume and completion verification.
 
 The sub-agent prompt:
 
@@ -153,23 +141,25 @@ The sub-agent prompt:
 >
 > End with: total findings per axis, worst issue per axis. Under 500 words.
 
-Completion: report delivered. Zero hard violations on both axes = pass.
+Completion: sub-agent `task_id` recorded AND report delivered. Zero hard violations on both axes = pass. If no `task_id` was recorded, the step is not done.
 
-### B.4 — Rework loop
+### B.3 — Rework loop
+
+To reduce the token context usage, the master delegates the rework and review back to the same sub-agents.
 
 If the review finds hard violations or missing requirements:
 
-1. Resume the **same implement sub-agent** (use `task_id`):
+1. Resume the **implement sub-agent** by `task_id` (from B.1):
    > The review found issues. Fix them:
    > [paste review findings]
    > Do NOT commit.
 
-2. Resume the **same review sub-agent** (use `task_id`):
+2. Resume the **review sub-agent** by `task_id` (from B.2):
    > Re-review the changes. Check that the previous findings are resolved. Run `git diff` to see what changed.
 
 3. Repeat until clean (zero hard violations on both axes).
 
-### B.5 — Commit
+### B.4 — Commit
 
 After review passes, the master commits:
 
@@ -183,7 +173,7 @@ Use semantic prefixes: `feat:`, `fix:`, `refactor:`, `test:`, `docs:`. Reference
 
 Update the ticket status in `.scratch/<title>/issues/NN-*.md` to `done`.
 
-Move to the next ticket. Repeat B.1–B.5.
+Move to the next ticket. Repeat B.1–B.4.
 
 ## Phase C — Wrap-up
 
@@ -207,3 +197,7 @@ After all tickets are committed, write `.scratch/<title>/MR.md`:
 ## Full diff
 [output of `git diff` covering all commits]
 ```
+
+---
+
+Feature:
