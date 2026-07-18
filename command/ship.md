@@ -90,7 +90,7 @@ Work the **frontier**: tickets whose blockers are all done. For a linear chain, 
 
 To reduce the token context usage, the master delegates the implementation.
 
-**MUST spawn a fresh `general` sub-agent.** Record its `task_id` — required for rework resume and completion verification.
+On first pass for this ticket: **MUST spawn a fresh `general` sub-agent.** Record its `task_id` — required for rework resume and completion verification. On rework, always resume the same agent by `task_id` (see B.3).
 
 The sub-agent prompt:
 
@@ -117,7 +117,7 @@ Completion: sub-agent `task_id` recorded AND sub-agent returns with code written
 
 To reduce the token context usage, the master delegates the review.
 
-**MUST spawn a fresh `general` sub-agent.** Record its `task_id` — required for rework resume and completion verification.
+On first pass for this ticket: **MUST spawn a fresh `general` sub-agent.** Record its `task_id` — required for rework resume and completion verification. On re-review, always resume the same agent by `task_id` (see B.3).
 
 The sub-agent prompt:
 
@@ -145,9 +145,7 @@ Completion: sub-agent `task_id` recorded AND report delivered. Zero hard violati
 
 ### B.3 — Rework loop
 
-To reduce the token context usage, the master delegates the rework and review back to the same sub-agents.
-
-If the review finds hard violations or missing requirements:
+If the review finds hard violations or missing requirements, the master delegates rework and re-review **back to the same sub-agents** from B.1 and B.2. Never spawn new agents for rework or re-review — always resume the existing ones by `task_id`.
 
 1. Resume the **implement sub-agent** by `task_id` (from B.1):
    > The review found issues. Fix them:
@@ -157,7 +155,9 @@ If the review finds hard violations or missing requirements:
 2. Resume the **review sub-agent** by `task_id` (from B.2):
    > Re-review the changes. Check that the previous findings are resolved. Run `git diff` to see what changed.
 
-3. Repeat until clean (zero hard violations on both axes).
+3. Repeat steps 1–2 until clean (zero hard violations on both axes).
+
+Only after the loop passes does the master move on. The implement and review sub-agents are **one instance per ticket**, reused across all rework cycles.
 
 ### B.4 — Commit
 
