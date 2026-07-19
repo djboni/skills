@@ -84,96 +84,93 @@ git commit -m "docs(<title>): planning — spec, requirements, and tickets"
 
 ## Phase B — Implementation
 
-Work the **frontier**: tickets whose blockers are all done. For a linear chain, that is top to bottom.
+Delegate the entire implementation loop to a single **orchestrator** sub-agent. The orchestrator cannot run commands, edit files, implement, or test — it can only delegate to worker sub-agents and coordinate the loop. This keeps the master's context clean across the full ticket set.
 
-### B.1 — Implement
+### B.1 — Spawn the orchestrator
 
-To reduce the token context usage, the master delegates the implementation.
+**MUST spawn a fresh `general` sub-agent.** Record its `task_id` — required for completion verification.
 
-On first pass for this ticket: **MUST spawn a fresh `general` sub-agent.** Record its `task_id` — required for rework resume and completion verification. On rework, always resume the same agent by `task_id` (see B.3).
+The orchestrator receives everything it needs up front (it cannot read files on its own):
 
-The sub-agent prompt:
-
-> Invoke `/implement` and `/tdd`. Implement the following ticket:
+> You are an implementation orchestrator. You delegate all work to worker sub-agents — you never run commands, edit files, implement, or test yourself.
 >
-> [paste full ticket content]
+> Work the **frontier**: tickets whose blockers are all done. For a linear chain, that is top to bottom.
 >
-> Relevant requirements:
-> [paste EARS requirements referenced by this ticket]
+> For each ticket, run this loop:
 >
-> Project conventions:
-> - Follow existing code style and patterns
-> - Read `CONTEXT.md` for domain vocabulary
-> - Respect ADRs in the area you are touching
-> - Only ASCII in code. Use uA, kOhm, ->, !=, ..., etc.
-> - Run typechecking and tests regularly, full suite at the end
-> - Do NOT commit — the orchestrator handles commits
+> **1. Implement** — Spawn a fresh `general` sub-agent with:
+> > Invoke `/implement` and `/tdd`. Implement the following ticket:
+> >
+> > [ticket content]
+> >
+> > Relevant requirements:
+> > [EARS requirements referenced by this ticket]
+> >
+> > Project conventions:
+> > - Follow existing code style and patterns
+> > - Read `CONTEXT.md` for domain vocabulary
+> > - Respect ADRs in the area you are touching
+> > - Only ASCII in code. Use uA, kOhm, ->, !=, ..., etc.
+> > - Run typechecking and tests regularly, full suite at the end
+> > - Do NOT commit — the orchestrator handles commits
+> >
+> > Return a summary of what was implemented and which files were modified.
 >
-> Return a summary of what was implemented and which files were modified.
-
-Completion: sub-agent `task_id` recorded AND sub-agent returns with code written and tests passing. If no `task_id` was recorded, the step is not done.
-
-### B.2 — Review
-
-To reduce the token context usage, the master delegates the review.
-
-On first pass for this ticket: **MUST spawn a fresh `general` sub-agent.** Record its `task_id` — required for rework resume and completion verification. On re-review, always resume the same agent by `task_id` (see B.3).
-
-The sub-agent prompt:
-
-> You are one agent performing both axes of code review.
+> Record the implement sub-agent `task_id`.
 >
-> **Diff:** run `git diff` to see the changes.
+> **2. Review** — Spawn a fresh `general` sub-agent with:
+> > You are one agent performing both axes of code review.
+> >
+> > **Diff:** run `git diff` to see the changes.
+> >
+> > **Spec:** read `docs/spec/NNNN-<title>.md` and the relevant EARS requirements at `docs/req/<domain>.md`.
+> >
+> > Ticket:
+> > [ticket content]
+> >
+> > Relevant requirements:
+> > [EARS requirements referenced by this ticket]
+> >
+> > **Standards:** check for Fowler code smells (Mysterious Name, Duplicated Code, Feature Envy, Data Clumps, Primitive Obsession, Repeated Switches, Shotgun Surgery, Divergent Change, Speculative Generality, Message Chains, Middle Man, Refused Bequest). If `CODING_STANDARDS.md` or `CONTRIBUTING.md` exists, those override the baseline. Skip anything tooling already enforces.
+> >
+> > Report:
+> > - **Standards axis**: file/hunk, violation type, severity (hard/judgement), fix suggestion
+> > - **Spec axis**: missing requirements, scope creep, wrong implementations — quote the spec line
+> >
+> > End with: total findings per axis, worst issue per axis. Under 500 words.
 >
-> **Spec:** read `docs/spec/NNNN-<title>.md` and the relevant EARS requirements at `docs/req/<domain>.md`.
+> Record the review sub-agent `task_id`.
 >
-> Ticket:
-> [paste full ticket content]
+> **3. Rework loop** — If the review finds hard violations or missing requirements:
+>    1. Resume the **implement sub-agent** by `task_id`:
+>       > The review found issues. Fix them:
+>       > [review findings]
+>       > Do NOT commit.
+>    2. Resume the **review sub-agent** by `task_id`:
+>       > Re-review the changes. Check that the previous findings are resolved. Run `git diff` to see what changed.
+>    3. Repeat until clean (zero hard violations on both axes).
 >
-> Relevant requirements:
-> [paste EARS requirements referenced by this ticket]
+>    Always resume the existing agents by `task_id` — never spawn fresh ones for rework.
 >
-> **Standards:** check for Fowler code smells (Mysterious Name, Duplicated Code, Feature Envy, Data Clumps, Primitive Obsession, Repeated Switches, Shotgun Surgery, Divergent Change, Speculative Generality, Message Chains, Middle Man, Refused Bequest). If `CODING_STANDARDS.md` or `CONTRIBUTING.md` exists, those override the baseline. Skip anything tooling already enforces.
+> **4. Commit** — After review passes:
+>    ```bash
+>    git status -s
+>    git add [modified files]
+>    git commit -m "<type>(<scope>): <description>"
+>    ```
+>    Use semantic prefixes: `feat:`, `fix:`, `refactor:`, `test:`, `docs:`. Reference the ticket number in the body if helpful.
+>    Update the ticket status in `.scratch/<title>/issues/NN-*.md` to `done`.
 >
-> Report:
-> - **Standards axis**: file/hunk, violation type, severity (hard/judgement), fix suggestion
-> - **Spec axis**: missing requirements, scope creep, wrong implementations — quote the spec line
+> Move to the next ticket.
 >
-> End with: total findings per axis, worst issue per axis. Under 500 words.
+> When all tickets are done, return a summary: which tickets were completed, what files were modified per ticket, and any issues encountered.
 
-Completion: sub-agent `task_id` recorded AND report delivered. Zero hard violations on both axes = pass. If no `task_id` was recorded, the step is not done.
+Master passes:
+- All tickets (full content of each `.scratch/<title>/issues/NN-*.md`)
+- All referenced EARS requirements (full content of each `docs/req/<domain>.md`)
+- Project conventions (from AGENTS.md)
 
-### B.3 — Rework loop
-
-If the review finds hard violations or missing requirements, the master delegates rework and re-review **back to the same sub-agents** from B.1 and B.2. Never spawn new agents for rework or re-review — always resume the existing ones by `task_id`.
-
-1. Resume the **implement sub-agent** by `task_id` (from B.1):
-   > The review found issues. Fix them:
-   > [paste review findings]
-   > Do NOT commit.
-
-2. Resume the **review sub-agent** by `task_id` (from B.2):
-   > Re-review the changes. Check that the previous findings are resolved. Run `git diff` to see what changed.
-
-3. Repeat steps 1–2 until clean (zero hard violations on both axes).
-
-Only after the loop passes does the master move on. The implement and review sub-agents are **one instance per ticket**, reused across all rework cycles.
-
-### B.4 — Commit
-
-After review passes, the master commits:
-
-```bash
-git status -s
-git add [modified files]
-git commit -m "<type>(<scope>): <description>"
-```
-
-Use semantic prefixes: `feat:`, `fix:`, `refactor:`, `test:`, `docs:`. Reference the ticket number in the body if helpful.
-
-Update the ticket status in `.scratch/<title>/issues/NN-*.md` to `done`.
-
-Move to the next ticket. Repeat B.1–B.4.
+Completion: orchestrator `task_id` recorded AND orchestrator returns with all tickets implemented, reviewed, and committed. If no `task_id` was recorded, the step is not done.
 
 ## Phase C — Wrap-up
 
