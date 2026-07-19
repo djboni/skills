@@ -16,3 +16,7 @@
 
 - Always use semantic commit prefixes (feat:, fix:, docs:, etc.).
 - Only ASCII in commit messages. Language accents are acceptable.
+
+## HTML
+
+- Use UTF-8 in HTML web pages freely.
