@@ -15,6 +15,8 @@ PDFs are never converted — download raw only. Only HTML pages (blogs/articles)
 
 **Last resort** — for any reference where you still cannot find a suitable download with actual content, search the web for `<author> <title> ext:pdf`. If there are several options, number them in the file name (e.g. `<YEAR>-<AUTHOR>-<TITLE>-1.pdf`, `<YEAR>-<AUTHOR>-<TITLE>-2.pdf`). List the files with several options so the user can review and remove what is not adequate — just download; only the user has the capability to decide adequacy.
 
+EPUB format is also OK.
+
 **If still could not find** — list those references explicitly and mark them as **not found**.
 
 After every reference is processed, list the contents of `<download-dir>/` so the user can verify.
