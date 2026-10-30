@@ -15,6 +15,7 @@
     "read": {
       "*": "allow",
       "**/vault.yml": "deny",
+      "**/vault*.yml": "deny",
       "**/.vault_pass": "deny",
       "**/.env": "deny",
       "**/.gitconfig": "deny",
@@ -24,6 +25,7 @@
     "edit": {
       "*": "allow",
       "**/vault.yml": "deny",
+      "**/vault*.yml": "deny",
       "**/.vault_pass": "deny",
       "**/.env": "deny",
       "**/.gitconfig": "deny",
