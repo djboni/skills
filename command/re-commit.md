@@ -1,5 +1,5 @@
 ---
-description: Re-commit after reset. Squash/restage/cleanup unpushed commits.
+description: Re-commit after reset.
 ---
 
-Review the full diff (uncommitted and unpushed), group related changes, and commit in logical steps. Do not push unless asked.
+Review the full diff, group related changes, and commit in logical steps. Do not push unless asked. `git status -s`
